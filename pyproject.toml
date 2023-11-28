@@ -1,0 +1,48 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "wheel"]
+
+
+[project]
+name = "rdmo-plugins-somef"
+description = "somef export plugin for RDMO."
+version = "0.0.1"
+readme = "README.md"
+keywords = [
+  "data management plan",
+  "dmp",
+  "rdmo",
+  "research data",
+  "research data management",
+  "researchobject",
+  "somef",
+]
+license = {text = "Apache-2.0"}
+authors = [
+  {name = "RDMO Arbeitsgemeinschaft", email = "rdmo-team@listserv.dfn.de"},
+]
+requires-python = ">=3.8"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Framework :: Django :: 4.2",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+  "rdmo~=2.0",
+  "tomli~=2.0",
+  #"somef~=0.8",
+]
+
+[project.urls]
+repository = "https://github.com/rdmorganiser/rdmo-plugins-somef"

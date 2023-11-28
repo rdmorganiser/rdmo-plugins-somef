@@ -1,0 +1,29 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: RDMO Plugin for SOMEF
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: David
+    family-names: Wallace
+    affiliation: Technical University of Darmstadt
+    orcid: 'https://orcid.org/0000-0001-8958-4601'
+  - given-names: Jürgen
+    family-names: Windeck
+    affiliation: Technical University of Darmstadt
+    orcid: 'https://orcid.org/0000-0003-1909-4353'
+  - given-names: Yves Vincent
+    family-names: Grossmann
+    affiliation: Max Planck Digital Library
+    orcid: 'https://orcid.org/0000-0002-2880-8947'
+repository-code: 'https://github.com/rdmorganiser/rdmo-plugins-somef/'
+keywords:
+  - Software-Management-Plans
+  - NFDI4DataScience
+  - maSMP
+  - NFDI4DS-miniHackathon-2023
+license: Apache-2.0

@@ -1,0 +1,15 @@
+'project/title' = ["full_title", "name"]
+'project/research_field' = 'keywords'
+'project/research_question/title' = 'description'
+'project/partner' = 'contributors'
+'smp/track-tasks' = 'issue_tracker'
+'smp/specification-sheet' = ["documentation", "faq"]
+'smp/institutional-requirements' = 'code_of_conduct'
+'smp/language' = 'programming_languages'
+'smp/external-components' = 'requirements'
+'smp/software-repository' = 'package_distribution'
+'smp/software-pid' = 'doi'
+'smp/support-for-software' = 'support_channels'
+'smp/feedback-process' = 'support'
+'smp/software-property-rights' = 'owner'
+'smp/software-license' = 'license'
