@@ -119,7 +119,10 @@ class SomefImport(Import):
         add_token_to_somef_config(SOMEF_CONFIG_FILE, settings.GITHUB_ACCESS_TOKEN)
 
         call_cmd = ["/bin/bash", f"{SOMEF_DEPENDENCY_SCRIPT}", repository_url]
-        somef_call = subprocess.check_output(call_cmd, text=True)
+        try:
+            somef_call = subprocess.check_output(call_cmd, text=True)
+        except subprocess.CalledProcessError as e:
+            somef_call = f"ERROR somef call failed: {e}"
 
         return somef_call
         
