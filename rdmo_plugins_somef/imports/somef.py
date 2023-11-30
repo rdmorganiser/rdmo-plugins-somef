@@ -9,13 +9,14 @@ from django.conf import settings
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
 
+from rdmo.projects.mixins import ProjectImportMixin
 from rdmo.projects.imports import Import
 from rdmo.projects.models import Project, Value
 from rdmo.questions.models import Catalog
 
 from .utils import load_config, read_json_file, add_token_to_somef_config
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 CONFIG_FILE = "somef-smp.toml"
 SOMEF_TEST_JSON = "somef_test.json"
@@ -28,9 +29,10 @@ SOMEF_JSON_OUTPUT_FILE = SOMEF_DEPENDENCY_SCRIPT.parent.joinpath("test.json")
 SOMEF_CONFIG_FILE = Path.home().joinpath(".somef/config.json")
 
 
-class SomefImport(Import):
+class SomefImport(ProjectImportMixin, Import):
 
     upload = True
+    somef_data = None
 
     class Form(forms.Form):
         repository_url = forms.URLField()
@@ -70,33 +72,90 @@ class SomefImport(Import):
         form = self.Form(self.request.POST)
         
         success = False
+        self.somef_data = None
+        self.source_title = 1
 
         if "cancel" in self.request.POST:
             return redirect("project", self.current_project.id)
 
         if form.is_valid():
             repository_url = form.cleaned_data.get("repository_url", None)
-            somef_data, success, msg = self.check(repository_url)
+            self.source_title = repository_url
+            somef_data, success, msg = self.prepare_somef_data(repository_url)
+            self.somef_data = somef_data
+
+            form.clean(success=success, msg=msg)
+            # if somef_data:
+                # process = self.process(repository_url=repository_url, somef_data=somef_data)
+            # success = bool(somef_data and self.values)
             if somef_data:
-                process = self.process(repository_url=repository_url, somef_data=somef_data)
-            success = bool(somef_data and self.values)
-        if success:
-            # breakpoint()
-            [i.delete() for i in self.current_project.values.all()]
-            # self.project.values.clear()
-            for value in self.values:
-                value.save()
-            return redirect("project_answers", self.current_project.id)
+                # breakpoint()
+                self.process()
+                # [i.delete() for i in self.current_project.values.all()]
+                # # self.project.values.clear()
+                # for value in self.values:
+                #     value.save()
+                                # store information in session for ProjectCreateImportView
+                self.request.session['import_file_name'] = str(SOMEF_JSON_OUTPUT_FILE)
+                self.request.session['import_key'] = 'somef'
+
+                # attach questions and current values
+                klass = ProjectImportMixin()
+                # breakpoint()
+                klass.update_values(self.current_project, self.catalog,
+                                    self.values, self.snapshots)
+                # breakpoint()
+                context = {
+                        # 'method': 'import_project',
+                        'current_project': self.current_project,
+                        'source_title': self.source_title,
+                        'source_project': self.project,
+                        'values': self.values,
+                        'snapshots': self.snapshots if not self.current_project else None,
+                        'tasks': self.tasks,
+                        'views': self.views,
+                        'source': self.current_project.id
+
+                    }
+                if self.current_project:
+                    return render(self.request, 'projects/project_import.html', context)
+                    # TODO somehow call the ProjectImportMixin.import_project
+                else:
+                    return redirect('project_create_import')
         else:
             pass
 
-        form.clean(success=success, msg=msg)
         return render(
-            self.request, SOMEF_PLUGIN_FORM_TEMPLATE, {"form": form}, status=200
+            self.request, SOMEF_PLUGIN_FORM_TEMPLATE, {"form": form, 'source_title': 'URL'}, status=200
         )
+    def check(self):
+        return True
 
+    def process(self):
 
-    def check(self, repository_url: str):
+        somef_data = self.somef_data
+
+        if self.current_project is None:
+            self.catalog = Catalog.objects.first()
+
+            self.project = Project()
+            self.project.title = self.somef_data.get('title')
+            self.project.description = self.somef_data.get('description', '')
+            self.project.created = self.somef_data.get('created', '')
+            self.project.catalog = self.catalog
+        else:
+            self.project = self.current_project
+            self.catalog = self.current_project.catalog
+
+        somef_mapping = load_config(CONFIG_FILE)
+
+        for attribute, somef_attr in somef_mapping.items():
+            attribute_uri = RDMO_ATTRIBUTE_URI_TEMPLATE.format(attribute=attribute)
+            value = self.create_value_for_project(attribute_uri, somef_attr)
+            if value is not None:
+                self.values.append(value)
+
+    def prepare_somef_data(self, repository_url: str):
         msg = ""
         somef_data = None
         somef_call = self.run_somef_subprocess(repository_url)
@@ -109,9 +168,12 @@ class SomefImport(Import):
         somef_data = somef_data if somef_data else {}
         return somef_data, success, msg
 
-    def run_somef_subprocess(self, repository_url: str) -> Optional[dict]:
+    def run_somef_subprocess(self, repository_url: str) -> str:
         # TODO call somef to create json from repository_url
         # breakpoint()
+        if DEBUG_MODE:
+            return "Debug mode, will load from json file. success"
+
         if not SOMEF_CONFIG_FILE.exists():
             somef_create_env = subprocess.check_output(["/bin/bash", f"{SOMEF_CREATE_ENV_SCRIPT}",
                                      ], text=True)
@@ -142,28 +204,6 @@ class SomefImport(Import):
             return False, _msg
 
 
-    def process(self, repository_url: str, somef_data: dict = None):
-
-        self.somef_data = somef_data
-        if self.current_project is None:
-            self.catalog = Catalog.objects.first()
-
-            self.project = Project()
-            self.project.title = self.somef_data.get('title')
-            self.project.description = self.somef_data.get('description', '')
-            self.project.created = self.somef_data.get('created', '')
-            self.project.catalog = self.catalog
-        else:
-            self.project = self.current_project
-            self.catalog = self.current_project.catalog
-
-        somef_mapping = load_config(CONFIG_FILE)
-
-        for attribute, somef_attr in somef_mapping.items():
-            attribute_uri = RDMO_ATTRIBUTE_URI_TEMPLATE.format(attribute=attribute)
-            value = self.create_value_for_project(attribute_uri, somef_attr)
-            if value is not None:
-                self.values.append(value)
 
 
     def create_value_for_project(self, attribute_uri: str, somef_attr: Union[List[str], str]) -> Value:
