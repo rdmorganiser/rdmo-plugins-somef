@@ -24,3 +24,8 @@ def read_json_file(json_file):
     except FileNotFoundError as exc:
         print(f"File {json_file} not found")
         return None
+
+def add_token_to_somef_config(config_file, token):
+    somef_config = read_json_file(config_file)
+    somef_config["Authorization"] = f"token {token}"
+    json.dump(somef_config, open(config_file, "w"))

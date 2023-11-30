@@ -5,6 +5,7 @@ from time import sleep
 from typing import Optional, Union, List
 
 from django import forms
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
 
@@ -12,7 +13,7 @@ from rdmo.projects.imports import Import
 from rdmo.projects.models import Project, Value
 from rdmo.questions.models import Catalog
 
-from .utils import load_config, read_json_file
+from .utils import load_config, read_json_file, add_token_to_somef_config
 
 DEBUG_MODE = False
 
@@ -20,9 +21,12 @@ CONFIG_FILE = "somef-smp.toml"
 SOMEF_TEST_JSON = "somef_test.json"
 RDMO_ATTRIBUTE_URI_TEMPLATE = "https://rdmorganiser.github.io/terms/domain/{attribute}"
 SOMEF_PLUGIN_FORM_TEMPLATE = "plugins/somef/somef_import_form.html"
-GITHUB_TEST_REPO = "https://github.com/rdmorganiser/rdmo.git"
+GITHUB_TEST_REPO = "https://github.com/rdmorganiser/rdmo"
 SOMEF_DEPENDENCY_SCRIPT = Path(__file__).parent.joinpath("scripts/somef_describe.sh")
+SOMEF_CREATE_ENV_SCRIPT = Path(__file__).parent.joinpath("scripts/create_somef_env.sh")
 SOMEF_JSON_OUTPUT_FILE = SOMEF_DEPENDENCY_SCRIPT.parent.joinpath("test.json")
+SOMEF_CONFIG_FILE = Path.home().joinpath(".somef/config.json")
+
 
 class SomefImport(Import):
 
@@ -74,7 +78,7 @@ class SomefImport(Import):
             repository_url = form.cleaned_data.get("repository_url", None)
             somef_data, success, msg = self.check(repository_url)
             if somef_data:
-                process = self.process(repository_url=repository_url, somef_json=somef_data)
+                process = self.process(repository_url=repository_url, somef_data=somef_data)
             success = bool(somef_data and self.values)
         if success:
             # breakpoint()
@@ -93,7 +97,6 @@ class SomefImport(Import):
 
 
     def check(self, repository_url: str):
-        
         msg = ""
         somef_data = None
         somef_call = self.run_somef_subprocess(repository_url)
@@ -108,42 +111,44 @@ class SomefImport(Import):
 
     def run_somef_subprocess(self, repository_url: str) -> Optional[dict]:
         # TODO call somef to create json from repository_url
-        somef_call = None
-        somef_call = subprocess.run(["/bin/bash", f"{SOMEF_DEPENDENCY_SCRIPT}", 
-                                     repository_url], capture_output=True, text=True)
-        timeout, stime = 15, 0
-        while somef_call is None and stime < timeout:
-            stime += 0.1
-            sleep(0.1)
+        # breakpoint()
+        if not SOMEF_CONFIG_FILE.exists():
+            somef_create_env = subprocess.check_output(["/bin/bash", f"{SOMEF_CREATE_ENV_SCRIPT}",
+                                     ], text=True)
+
+        add_token_to_somef_config(SOMEF_CONFIG_FILE, settings.GITHUB_ACCESS_TOKEN)
+
+        call_cmd = ["/bin/bash", f"{SOMEF_DEPENDENCY_SCRIPT}", repository_url]
+        somef_call = subprocess.check_output(call_cmd, text=True)
+
         return somef_call
         
-    def validate_somef_prcess_call(self, somef_call: subprocess.CompletedProcess):
+    def validate_somef_prcess_call(self, somef_call: str):
         # breakpoint()
-        if somef_call.returncode == 0:
-            stderr  = somef_call.stderr if somef_call.stderr else ''
-            stdout  = somef_call.stdout if somef_call.stdout else ''
-            if not "ERROR" in stderr and not "ERROR" in stdout:
-                _msg = f"somef call successful: {stdout}"
+        if somef_call:
+            if not "ERROR" in somef_call:
+                _msg = f"somef call successful: {somef_call}"
                 return True, _msg
             else:
                 print("somef call returned an error")
-                _msg = f"somef call returned an error: {stderr}"
+                _msg = f"somef call returned an error: {somef_call}"
                 return False, _msg
         else:
-            _msg = f"somef call script failed: {somef_call.stderr}"
+            _msg = f"somef call script failed: {somef_call}"
             print("somef call script failed")
             return False, _msg
 
 
+    def process(self, repository_url: str, somef_data: dict = None):
 
-    def process(self, repository_url: str, somef_json: dict = None):
+        self.somef_data = somef_data
         if self.current_project is None:
             self.catalog = Catalog.objects.first()
 
             self.project = Project()
-            self.project.title = self.somef.get('title')
-            self.project.description = self.somef.get('description', '')
-            self.project.created = self.somef.get('created', '')
+            self.project.title = self.somef_data.get('title')
+            self.project.description = self.somef_data.get('description', '')
+            self.project.created = self.somef_data.get('created', '')
             self.project.catalog = self.catalog
         else:
             self.project = self.current_project
@@ -171,7 +176,7 @@ class SomefImport(Import):
 
     def get_value_from_mapping(self, somef_attr) -> Optional[str]:
         if isinstance(somef_attr, str):
-            if self.somef.get(somef_attr):
+            if self.somef_data.get(somef_attr):
                 return self.parse_somef_json_entry(somef_attr)
             return None
         if isinstance(somef_attr, list):
@@ -183,7 +188,7 @@ class SomefImport(Import):
 
 
     def parse_somef_json_entry(self, somef_attr):
-        somef_entry = self.somef.get(somef_attr)
+        somef_entry = self.somef_data.get(somef_attr)
         if isinstance(somef_entry, list):
             return '\n'.join(map(lambda x: x['result']['value'], somef_entry))
         elif isinstance(somef_entry, dict):
