@@ -14,3 +14,6 @@ make_python3_env () {
 make_python3_env
 
 pip install somef
+# pip install git+https://github.com/KnowledgeCaptureAndDiscovery/somef.git@dev
+
+somef configure -a
