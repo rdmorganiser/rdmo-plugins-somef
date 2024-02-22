@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import subprocess
-from time import sleep
 from typing import Optional, Union, List
 
 from django import forms
@@ -74,7 +73,6 @@ class SomefImport(ProjectImportMixin, Import):
         success = False
         self.somef_data = None
         self.source_title = 1
-
         if "cancel" in self.request.POST:
             return redirect("project", self.current_project.id)
 
@@ -155,15 +153,17 @@ class SomefImport(ProjectImportMixin, Import):
             if value is not None:
                 self.values.append(value)
 
-    def prepare_somef_data(self, repository_url: str):
+    def prepare_somef_data(self, repository_url: str=None):
         msg = ""
         somef_data = None
-        somef_call = self.run_somef_subprocess(repository_url)
-        success, msg = self.validate_somef_prcess_call(somef_call)
+        success = False
+        if repository_url is not None:
+            somef_call = self.run_somef_subprocess(repository_url)
+            success, msg = self.validate_somef_prcess_call(somef_call)
         if SOMEF_JSON_OUTPUT_FILE.exists():
             somef_data = read_json_file(SOMEF_JSON_OUTPUT_FILE)
+            success = True
         else:
-            success = False
             msg += "\n somef call did not produce a json file"
         somef_data = somef_data if somef_data else {}
         return somef_data, success, msg
@@ -171,9 +171,9 @@ class SomefImport(ProjectImportMixin, Import):
     def run_somef_subprocess(self, repository_url: str) -> str:
         # TODO call somef to create json from repository_url
         # breakpoint()
+        # breakpoint()
         if DEBUG_MODE:
             return "Debug mode, will load from json file. success"
-
         if not SOMEF_CONFIG_FILE.exists():
             somef_create_env = subprocess.check_output(["/bin/bash", f"{SOMEF_CREATE_ENV_SCRIPT}",
                                      ], text=True)
