@@ -4,7 +4,8 @@
 echo "pwd: $(pwd), 0: ${0}, 1: ${1} "
 DIR=$(dirname ${0})
 
-source $DIR/env/bin/activate
+# activate py3.9 env from pyenv
+. ${PYENV_ROOT}/versions/3.9.18//envs/rdmo-plugins-somef/bin/activate || exit 1
 
 python --version
 # pip show somef
