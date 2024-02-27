@@ -2,6 +2,7 @@ from pathlib import Path
 import tomli as toml
 import json
 
+
 def load_config(file_name):
     toml_file = Path(__file__).parent / file_name
     try:
@@ -13,7 +14,8 @@ def load_config(file_name):
         raise toml.TOMLDecodeError(
             "\nThe {} file is not a valid TOML file.\n\t{}".format(toml_file, exc)
         ) from exc
-    
+
+
 def read_json_file(json_file):
     try:
         with open(Path(json_file)) as f:
@@ -21,11 +23,14 @@ def read_json_file(json_file):
         return data
     except (json.decoder.JSONDecodeError, UnicodeDecodeError):
         return None
-    except FileNotFoundError as exc:
-        print(f"File {json_file} not found")
+    except FileNotFoundError as e:
+        print(f"File {json_file} not found {e!s}")
         return None
+
 
 def add_token_to_somef_config(config_file, token):
     somef_config = read_json_file(config_file)
+    if somef_config is None:
+        return
     somef_config["Authorization"] = f"token {token}"
     json.dump(somef_config, open(config_file, "w"))

@@ -41,6 +41,7 @@ The local installation of `somef` can be tested with:
 ```bash
 source rdmo_plugins_somef/imports/scripts/env/bin/activate
 somef describe -r https://github.com/dgarijo/Widoco/ -o test.json -t 0.8
+somef describe -r https://github.com/rdmorganiser/rdmo -o test.json -t 0.8
 ```
 
 
