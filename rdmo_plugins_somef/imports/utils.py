@@ -21,11 +21,15 @@ def read_json_file(json_file):
         return data
     except (json.decoder.JSONDecodeError, UnicodeDecodeError):
         return None
-    except FileNotFoundError as exc:
+    except FileNotFoundError as e:
         print(f"File {json_file} not found")
         return None
 
+
 def add_token_to_somef_config(config_file, token):
     somef_config = read_json_file(config_file)
+    if somef_config is None:
+        return
     somef_config["Authorization"] = f"token {token}"
     json.dump(somef_config, open(config_file, "w"))
+
